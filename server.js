@@ -41,42 +41,50 @@ async function getToken() {
 // 🔎 Find record & update
 app.post("/webhook", async (req, res) => {
   try {
-    const { order_number } = req.body;
+    let { order_number } = req.body;
 
     if (!order_number) {
       return res.status(400).json({ error: "Missing order_number in body" });
     }
 
-    // 🔑 Get access token properly
-    const accessToken = await getToken();
+    // 🔹 Strip "SS" prefix if it exists
+    if (order_number.startsWith("SS")) {
+      order_number = order_number.slice(2);
+    }
 
-    // 🔍 Find record
-    const response = await axios.post(`${FILEMAKER_BASE_URL}/layouts/${FM_LAYOUT}/_find`, {
-      console.log("🧪 Making request to:", `${FILEMAKER_BASE_URL}/layouts/${FM_LAYOUT}/_find`);
-      query: [{ Shopify_OrderNumber: order_number }]
-    }, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
-      }
-    });
+    const token = await getToken();
 
-    const recordId = response.data.response.data[0].recordId;
+    // 🔍 Find record matching the stripped order number
+    const findResponse = await axios.post(
+      `${FM_HOST}/fmi/data/v1/databases/${FM_DATABASE}/layouts/${FM_LAYOUT}/_find`,
+      {
+        query: [{ Shopify_OrderNumber: order_number }]
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
 
-    // ✅ Update record
-    const updateResponse = await axios.patch(`${FILEMAKER_BASE_URL}/layouts/${FM_LAYOUT}/records/${recordId}`, {
-      fieldData: {
-        FOUND: "YES"
+    const recordId = findResponse.data.response.data[0].recordId;
+
+    // ✅ Update "FOUND" field to "YES"
+    await axios.patch(
+      `${FM_HOST}/fmi/data/v1/databases/${FM_DATABASE}/layouts/${FM_LAYOUT}/records/${recordId}`,
+      {
+        fieldData: { FOUND: "YES" }
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
       }
-    }, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
-      }
-    });
+    );
 
     res.json({ success: true, recordId });
-
   } catch (error) {
     console.error("❌ Webhook error:", error.response?.data || error.message || error);
     res.status(500).json({ error: "Something went wrong" });
