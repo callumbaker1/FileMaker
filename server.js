@@ -45,6 +45,10 @@ app.post("/webhook", async (req, res) => {
       return res.status(400).json({ error: "Missing order_number in body" });
     }
 
+    // 🔑 Get access token properly
+    const accessToken = await getToken();
+
+    // 🔍 Find record
     const response = await axios.post(`${FILEMAKER_BASE_URL}/layouts/${FM_LAYOUT}/_find`, {
       query: [{ Shopify_OrderNumber: order_number }]
     }, {
@@ -56,6 +60,7 @@ app.post("/webhook", async (req, res) => {
 
     const recordId = response.data.response.data[0].recordId;
 
+    // ✅ Update record
     const updateResponse = await axios.patch(`${FILEMAKER_BASE_URL}/layouts/${FM_LAYOUT}/records/${recordId}`, {
       fieldData: {
         FOUND: "YES"
@@ -68,6 +73,7 @@ app.post("/webhook", async (req, res) => {
     });
 
     res.json({ success: true, recordId });
+
   } catch (error) {
     console.error("❌ Webhook error:", error.response?.data || error.message || error);
     res.status(500).json({ error: "Something went wrong" });
