@@ -115,7 +115,7 @@ await axios.patch(
       FOUND: "YES",
       // "Date_Approved": dateApproved,
       // "TimeStamp_Approved": timeStampApproved,
-      "Status": "Approved"
+      Status: "Approved"
     }
   },
   {
