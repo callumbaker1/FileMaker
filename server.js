@@ -18,6 +18,7 @@ const FM_LAYOUT = process.env.FM_LAYOUT;
 
 // 🔐 Construct FileMaker Base URL
 const FILEMAKER_BASE_URL = `${FM_HOST}/fmi/data/v1/databases/${FM_DATABASE}`;
+console.log("🧪 FILEMAKER_BASE_URL:", FILEMAKER_BASE_URL);
 
 // 🔐 Basic auth header
 const basicAuth = Buffer.from(`${FM_USER}:${FM_PASS}`).toString("base64");
@@ -51,6 +52,7 @@ app.post("/webhook", async (req, res) => {
 
     // 🔍 Find record
     const response = await axios.post(`${FILEMAKER_BASE_URL}/layouts/${FM_LAYOUT}/_find`, {
+      console.log("🧪 Making request to:", `${FILEMAKER_BASE_URL}/layouts/${FM_LAYOUT}/_find`);
       query: [{ Shopify_OrderNumber: order_number }]
     }, {
       headers: {
