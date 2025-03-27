@@ -36,49 +36,40 @@ async function getToken() {
 
 // 🔎 Find record & update
 app.post("/webhook", async (req, res) => {
-    try {
-        const orderNumber = req.body.order_number;
-        if (!orderNumber) return res.status(400).json({ error: "Missing order_number" });
+  try {
+    const { order_number } = req.body;
 
-        const token = await getToken();
-
-        // Search for record
-        const findResponse = await axios.post(
-            `${FM_HOST}/fmi/data/v1/databases/${FM_DATABASE}/layouts/${FM_LAYOUT}/_find`,
-            {
-                query: [{ Shopify_OrderNumber: orderNumber }],
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-            }
-        );
-
-        const recordId = findResponse.data.response.data[0].recordId;
-
-        // Update field
-        await axios.patch(
-            `${FM_HOST}/fmi/data/v1/databases/${FM_DATABASE}/layouts/${FM_LAYOUT}/records/${recordId}`,
-            {
-                fieldData: {
-                    FOUND: "YES",
-                },
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-            }
-        );
-
-        res.json({ success: true, message: "Record updated!" });
-    } catch (error) {
-        console.error("❌ Error:", error.response?.data || error.message);
-        res.status(500).json({ error: "Something went wrong" });
+    if (!order_number) {
+      return res.status(400).json({ error: "Missing order_number in body" });
     }
+
+    const response = await axios.post(`${FILEMAKER_BASE_URL}/layouts/${FILEMAKER_LAYOUT}/_find`, {
+      query: [{ Shopify_OrderNumber: order_number }]
+    }, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    const recordId = response.data.response.data[0].recordId;
+
+    const updateResponse = await axios.patch(`${FILEMAKER_BASE_URL}/layouts/${FILEMAKER_LAYOUT}/records/${recordId}`, {
+      fieldData: {
+        FOUND: "YES"
+      }
+    }, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    res.json({ success: true, recordId });
+  } catch (error) {
+    console.error("❌ Webhook error:", error.response?.data || error.message || error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
 });
 
 app.listen(PORT, () => {
