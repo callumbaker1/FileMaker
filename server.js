@@ -1,4 +1,3 @@
-// server.js
 require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
@@ -10,86 +9,78 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors());
 
-// 🔐 FileMaker credentials from .env
-const FILEMAKER_HOST = process.env.FILEMAKER_HOST; // e.g. "https://your-subdomain.fmphost.com"
-const FILEMAKER_DATABASE = process.env.FILEMAKER_DATABASE; // e.g. "StickerShop"
-const FILEMAKER_USER = process.env.FILEMAKER_USER;
-const FILEMAKER_PASSWORD = process.env.FILEMAKER_PASSWORD;
+// 🔐 FileMaker Config
+const FM_HOST = process.env.FM_HOST;
+const FM_DATABASE = process.env.FM_DATABASE;
+const FM_USER = process.env.FM_USER;
+const FM_PASS = process.env.FM_PASS;
+const FM_LAYOUT = process.env.FM_LAYOUT;
 
-// 🔑 Encode Basic Auth Header
-function getBasicAuthHeader() {
-  const token = Buffer.from(`${FILEMAKER_USER}:${FILEMAKER_PASSWORD}`).toString("base64");
-  return `Basic ${token}`;
+// 🔐 Basic auth header
+const basicAuth = Buffer.from(`${FM_USER}:${FM_PASS}`).toString("base64");
+
+// 🔑 Get FileMaker token
+async function getToken() {
+    const response = await axios.post(
+        `${FM_HOST}/fmi/data/v1/databases/${FM_DATABASE}/sessions`,
+        {},
+        {
+            headers: {
+                Authorization: `Basic ${basicAuth}`,
+                "Content-Type": "application/json",
+            },
+        }
+    );
+    return response.data.response.token;
 }
 
-// 🔌 Get FileMaker token
-async function getFileMakerToken() {
-  const response = await axios.post(
-    `${FILEMAKER_HOST}/fmi/data/v1/databases/${FILEMAKER_DATABASE}/sessions`,
-    {},
-    {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: getBasicAuthHeader()
-      }
+// 🔎 Find record & update
+app.post("/webhook", async (req, res) => {
+    try {
+        const orderNumber = req.body.order_number;
+        if (!orderNumber) return res.status(400).json({ error: "Missing order_number" });
+
+        const token = await getToken();
+
+        // Search for record
+        const findResponse = await axios.post(
+            `${FM_HOST}/fmi/data/v1/databases/${FM_DATABASE}/layouts/${FM_LAYOUT}/_find`,
+            {
+                query: [{ Shopify_OrderNumber: orderNumber }],
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            }
+        );
+
+        const recordId = findResponse.data.response.data[0].recordId;
+
+        // Update field
+        await axios.patch(
+            `${FM_HOST}/fmi/data/v1/databases/${FM_DATABASE}/layouts/${FM_LAYOUT}/records/${recordId}`,
+            {
+                fieldData: {
+                    FOUND: "YES",
+                },
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            }
+        );
+
+        res.json({ success: true, message: "Record updated!" });
+    } catch (error) {
+        console.error("❌ Error:", error.response?.data || error.message);
+        res.status(500).json({ error: "Something went wrong" });
     }
-  );
-  return response.data.response.token;
-}
-
-// 🔁 Update record by email
-async function updateRecordByEmail(email, noteText) {
-  const token = await getFileMakerToken();
-
-  // 🔍 Find record by email
-  const findResponse = await axios.post(
-    `${FILEMAKER_HOST}/fmi/data/v1/databases/${FILEMAKER_DATABASE}/layouts/LayoutName/_find`,
-    {
-      query: [{ customer_email: email }]
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json"
-      }
-    }
-  );
-
-  const recordId = findResponse.data.response.data[0].recordId;
-
-  // ✏️ Update the note field
-  await axios.patch(
-    `${FILEMAKER_HOST}/fmi/data/v1/databases/${FILEMAKER_DATABASE}/layouts/LayoutName/records/${recordId}`,
-    {
-      fieldData: {
-        note: noteText
-      }
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json"
-      }
-    }
-  );
-
-  console.log(`✅ Record for ${email} updated.`);
-}
-
-// 📬 Webhook endpoint
-app.post("/webhook/kayako", async (req, res) => {
-  try {
-    const { customer_email, note } = req.body;
-    await updateRecordByEmail(customer_email, note);
-    res.status(200).json({ success: true });
-  } catch (error) {
-    console.error("❌ Error updating record:", error.response?.data || error.message);
-    res.status(500).json({ error: "Failed to update FileMaker record" });
-  }
 });
 
-// 🚀 Start server
 app.listen(PORT, () => {
-  console.log(`✅ Webhook server running on port ${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
 });
-
