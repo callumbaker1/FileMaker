@@ -44,17 +44,21 @@ app.post("/webhook", async (req, res) => {
     let { order_number } = req.body;
 
     if (!order_number) {
+      console.log("❌ Missing order_number in body");
       return res.status(400).json({ error: "Missing order_number in body" });
     }
+
+    // 🔹 Log original order number
+    console.log(`📦 Incoming order number: ${order_number}`);
 
     // 🔹 Strip "SS" prefix if it exists
     if (order_number.startsWith("SS")) {
       order_number = order_number.slice(2);
+      console.log(`🔍 Stripped order number: ${order_number}`);
     }
 
     const token = await getToken();
 
-    // 🔍 Find record matching the stripped order number
     const findResponse = await axios.post(
       `${FM_HOST}/fmi/data/v1/databases/${FM_DATABASE}/layouts/${FM_LAYOUT}/_find`,
       {
@@ -68,7 +72,10 @@ app.post("/webhook", async (req, res) => {
       }
     );
 
-    const recordId = findResponse.data.response.data[0].recordId;
+    const record = findResponse.data.response.data[0];
+    const recordId = record.recordId;
+
+    console.log(`✅ Match found: Record ID ${recordId} for order ${order_number}`);
 
     // ✅ Update "FOUND" field to "YES"
     await axios.patch(
@@ -83,6 +90,8 @@ app.post("/webhook", async (req, res) => {
         }
       }
     );
+
+    console.log(`📝 Updated record ${recordId} (Shopify_OrderNumber: ${order_number}) with FOUND = "YES"`);
 
     res.json({ success: true, recordId });
   } catch (error) {
