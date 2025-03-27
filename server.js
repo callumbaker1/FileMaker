@@ -16,6 +16,8 @@ const FM_USER = process.env.FM_USER;
 const FM_PASS = process.env.FM_PASS;
 const FM_LAYOUT = process.env.FM_LAYOUT;
 
+const FILEMAKER_BASE_URL = `https://${FM_HOST}/fmi/data/v1/databases/${FM_DATABASE}`;
+
 // 🔐 Basic auth header
 const basicAuth = Buffer.from(`${FM_USER}:${FM_PASS}`).toString("base64");
 
@@ -43,7 +45,7 @@ app.post("/webhook", async (req, res) => {
       return res.status(400).json({ error: "Missing order_number in body" });
     }
 
-    const response = await axios.post(`${FILEMAKER_BASE_URL}/layouts/${FILEMAKER_LAYOUT}/_find`, {
+    const response = await axios.post(`${FILEMAKER_BASE_URL}/layouts/${FM_LAYOUT}/_find`, {
       query: [{ Shopify_OrderNumber: order_number }]
     }, {
       headers: {
@@ -54,7 +56,7 @@ app.post("/webhook", async (req, res) => {
 
     const recordId = response.data.response.data[0].recordId;
 
-    const updateResponse = await axios.patch(`${FILEMAKER_BASE_URL}/layouts/${FILEMAKER_LAYOUT}/records/${recordId}`, {
+    const updateResponse = await axios.patch(`${FILEMAKER_BASE_URL}/layouts/${FM_LAYOUT}/records/${recordId}`, {
       fieldData: {
         FOUND: "YES"
       }
