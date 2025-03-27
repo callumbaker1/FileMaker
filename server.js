@@ -103,19 +103,24 @@ app.post("/webhook", async (req, res) => {
     console.log(`✅ Match found: Record ID ${recordId} for order ${order_number}`);
     logEvent(`✅ Updated order ${order_number} (Record ID: ${recordId})`);
 
-    // 🔄 Update record
-    await axios.patch(
-      `${FILEMAKER_BASE_URL}/layouts/${FM_LAYOUT}/records/${recordId}`,
-      {
-        fieldData: { FOUND: "YES" }
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      }
-    );
+// 🔄 Update record with multiple fields
+await axios.patch(
+  `${FILEMAKER_BASE_URL}/layouts/${FM_LAYOUT}/records/${recordId}`,
+  {
+    fieldData: {
+      FOUND: "YES",
+      TimeStamp_Approved: new Date().toISOString(), // full timestamp
+      Date_Approved: new Date().toISOString().split("T")[0], // just the date
+      Status: "Approved"
+    }
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    }
+  }
+);
 
     console.log(`📝 Updated record ${recordId} with FOUND = "YES"`);
     res.json({ success: true, recordId });
