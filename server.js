@@ -22,6 +22,10 @@ const FM_LAYOUT = process.env.FM_LAYOUT;
 const FILEMAKER_BASE_URL = `${FM_HOST}/fmi/data/v1/databases/${FM_DATABASE}`;
 console.log("🧪 FILEMAKER_BASE_URL:", FILEMAKER_BASE_URL);
 
+const now = new Date();
+const dateApproved = now.toISOString().split("T")[0]; // "2025-03-27"
+const timeStampApproved = now.toISOString(); // Full ISO timestamp
+
 // 🔐 Basic auth header
 const basicAuth = Buffer.from(`${FM_USER}:${FM_PASS}`).toString("base64");
 
@@ -109,9 +113,9 @@ await axios.patch(
   {
     fieldData: {
       FOUND: "YES",
-      TimeStamp_Approved: new Date().toISOString(), // full timestamp
-      Date_Approved: new Date().toISOString().split("T")[0], // just the date
-      Status: "Approved"
+      "Date_Approved": dateApproved,
+      "TimeStamp_Approved": timeStampApproved,
+      "Status": "Approved"
     }
   },
   {
