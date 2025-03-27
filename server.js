@@ -16,7 +16,8 @@ const FM_USER = process.env.FM_USER;
 const FM_PASS = process.env.FM_PASS;
 const FM_LAYOUT = process.env.FM_LAYOUT;
 
-const FILEMAKER_BASE_URL = `https://${FM_HOST}/fmi/data/v1/databases/${FM_DATABASE}`;
+// 🔐 Construct FileMaker Base URL
+const FILEMAKER_BASE_URL = `${FM_HOST}/fmi/data/v1/databases/${FM_DATABASE}`;
 
 // 🔐 Basic auth header
 const basicAuth = Buffer.from(`${FM_USER}:${FM_PASS}`).toString("base64");
