@@ -113,8 +113,8 @@ await axios.patch(
   {
     fieldData: {
       FOUND: "YES",
-      "Date_Approved": dateApproved,
-      "TimeStamp_Approved": timeStampApproved,
+      // "Date_Approved": dateApproved,
+      // "TimeStamp_Approved": timeStampApproved,
       "Status": "Approved"
     }
   },
